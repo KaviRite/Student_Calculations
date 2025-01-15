@@ -1,10 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using NLog;
+using Serilog;
 
 namespace StudentCalculations
 {
     internal class Program
-    {
+    {   //Initialize NLog logger
+        private static readonly Logger nLogger = LogManager.GetCurrentClassLogger();
+
+        // Returns Result, Total Marks and Percentage
         static (bool IsPass, int TotalMarks, decimal Percentage) CalculateSubjectMarks(Dictionary<string, int> subjectMarks)
         {
             bool isPass = true;
@@ -23,6 +28,7 @@ namespace StudentCalculations
             return (isPass, totalMarks, percentage);
         }
 
+        // Returns Tuple containing Student Details (Without Separate Subject Marks)
         static List<string> GetStudentDetails(List<(int StudentId, string StudentName, Dictionary<string, int> SubjectMarks)> students)
         {
             var studentDetails = new List<string>();
@@ -39,26 +45,35 @@ namespace StudentCalculations
             return studentDetails;
         }
 
+        // Returns Student tuple for newly created record
         static List<(int StudentId, string StudentName, Dictionary<string, int> SubjectMarks)> CreateStudentRecords()
         {
             var students = new List<(int StudentId, string StudentName, Dictionary<string, int> SubjectMarks)>();
 
             Console.WriteLine("Enter the number of students: ");
-            if (!int.TryParse(Console.ReadLine(), out int studentCount) || studentCount <= 0)
+            string? input = Console.ReadLine();
+            if (!int.TryParse(input, out int studentCount) || studentCount <= 0)
             {
-                Console.WriteLine("Invalid input. Exiting.");
+                Log.Warning("Invalid input for student count. Exiting.");
                 return students;
             }
 
             for (int i = 1; i <= studentCount; i++)
             {
                 Console.WriteLine($"Enter details for student {i} (Format: ID, Name, Subject1_Marks, Subject2_Marks, Subject3_Marks):");
-                string input = Console.ReadLine();
-                string[] details = input.Split(',');
+                string? studentInput = Console.ReadLine();
+
+                if (studentInput is null)
+                {
+                    Log.Warning("Null input received. Skipping.");
+                    continue;
+                }
+
+                string[] details = studentInput.Split(',');
 
                 if (details.Length != 5 || !int.TryParse(details[0].Trim(), out int id))
                 {
-                    Console.WriteLine("Invalid input format. Skipping.");
+                    Log.Warning("Invalid input format for student details. Skipping.");
                     continue;
                 }
 
@@ -76,6 +91,7 @@ namespace StudentCalculations
             return students;
         }
 
+        // Returns Updated Marks Tuple for Existing Student
         static (bool IsUpdated, string Message) UpdateStudentMarks(
             List<(int StudentId, string StudentName, Dictionary<string, int> SubjectMarks)> students, int studentId, string subject, int newMarks)
         {
@@ -92,11 +108,14 @@ namespace StudentCalculations
 
         static void MainMenu()
         {
+            // List for All Students Record
             var students = new List<(int StudentId, string StudentName, Dictionary<string, int> SubjectMarks)>();
 
             int choice;
             do
             {
+                nLogger.Trace("Main Menu Opened.");
+
                 Console.WriteLine("\nStudent Performance Management System");
                 Console.WriteLine("1. View all students");
                 Console.WriteLine("2. View specific student details");
@@ -105,15 +124,17 @@ namespace StudentCalculations
                 Console.WriteLine("5. Exit");
                 Console.WriteLine("Enter your choice: ");
 
-                if (!int.TryParse(Console.ReadLine(), out choice))
+                string? input = Console.ReadLine();
+                if (!int.TryParse(input, out choice))
                 {
-                    Console.WriteLine("Invalid input. Try again.");
+                    Log.Warning("Invalid choice input. Try again.");
                     continue;
                 }
 
                 switch (choice)
                 {
                     case 1:
+                        nLogger.Trace("Viewed All Students.");
                         var allStudentDetails = GetStudentDetails(students);
                         foreach (var detail in allStudentDetails)
                         {
@@ -123,11 +144,13 @@ namespace StudentCalculations
 
                     case 2:
                         Console.WriteLine("Enter Student ID:");
-                        if (int.TryParse(Console.ReadLine(), out int studentId))
+                        string? idInput = Console.ReadLine();
+                        if (int.TryParse(idInput, out int studentId))
                         {
                             var student = students.Find(s => s.StudentId == studentId);
                             if (student.StudentId != 0)
                             {
+                                nLogger.Trace($"Student ID {studentId} viewed.");
                                 var result = CalculateSubjectMarks(student.SubjectMarks);
                                 Console.WriteLine($"\nID: {student.StudentId}, Name: {student.StudentName}" +
                                                   $"\nTotal Marks: {result.TotalMarks}, Percentage: {result.Percentage:F2}%" +
@@ -135,37 +158,47 @@ namespace StudentCalculations
                             }
                             else
                             {
-                                Console.WriteLine("Student not found.");
+                                Log.Information($"Student with ID {studentId} not found.");
                             }
+                            nLogger.Debug($"Student ID {studentId} not numeric.");
                         }
                         break;
 
                     case 3:
+                        nLogger.Trace($"New Student Record Addition.");
                         students.AddRange(CreateStudentRecords());
                         break;
 
                     case 4:
                         Console.WriteLine("Enter Student ID, Subject Name, and Updated Marks (Format: ID Subject Marks):");
-                        string input = Console.ReadLine();
-                        string[] details = input.Split(' ');
+                        string? updateInput = Console.ReadLine();
 
-                        if (details.Length != 3 || !int.TryParse(details[0], out studentId) || !int.TryParse(details[2], out int updatedMarks))
+                        if (updateInput is null)
                         {
-                            Console.WriteLine("Invalid input format.");
+                            Log.Warning("Null input for updating marks.");
                             continue;
                         }
 
+                        string[] details = updateInput.Split(' ');
+
+                        if (details.Length != 3 || !int.TryParse(details[0], out int id) || !int.TryParse(details[2], out int updatedMarks))
+                        {
+                            Log.Warning("Invalid input format for updating marks.");
+                            continue;
+                        }
+
+                        nLogger.Debug($"Updation of Marks for {details[0]} initiated.");
                         string subject = details[1];
-                        var updateResult = UpdateStudentMarks(students, studentId, subject, updatedMarks);
-                        Console.WriteLine(updateResult.Message);
+                        var updateResult = UpdateStudentMarks(students, id, subject, updatedMarks);
+                        Log.Information(updateResult.Message);
                         break;
 
                     case 5:
-                        Console.WriteLine("Exiting...");
+                        Log.Information("Exiting application...");
                         break;
 
                     default:
-                        Console.WriteLine("Invalid choice. Try again.");
+                        Log.Warning("Invalid choice. Try again.");
                         break;
                 }
             } while (choice != 5);
@@ -173,7 +206,27 @@ namespace StudentCalculations
 
         static void Main(string[] args)
         {
-            MainMenu();
+            // Configure Serilog
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.Console()
+                .WriteTo.File("C:/Users/Kavi/Desktop/Rite/Student_Calculations/logs/application-log-.txt", rollingInterval: RollingInterval.Day)
+                .CreateLogger();
+
+            try
+            {
+                Log.Information("Application starting...");
+                MainMenu();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "An unexpected error occurred.");
+            }
+            finally
+            {
+                Log.Information("Application closing...");
+                Log.CloseAndFlush();
+            }
         }
     }
 }
