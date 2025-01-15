@@ -3,10 +3,20 @@ using System.Collections.Generic;
 using NLog;
 using Serilog;
 
+public class NoRecordsFound : Exception
+{
+    public NoRecordsFound(String message)
+        : base(message)
+    {
+
+    }
+}
+
 namespace StudentCalculations
 {
     internal class Program
-    {   //Initialize NLog logger
+    {   
+        //Initialize NLog logger
         private static readonly Logger nLogger = LogManager.GetCurrentClassLogger();
 
         // Returns Result, Total Marks and Percentage
@@ -28,9 +38,25 @@ namespace StudentCalculations
             return (isPass, totalMarks, percentage);
         }
 
+        static void validateStudentCount(List<(int StudentId, string StudentName, Dictionary<string, int> SubjectMarks)> students)
+        {
+            if(students.Count == 0)
+            {
+                throw new NoRecordsFound("No Students to View.");
+            }
+        }
+
         // Returns Tuple containing Student Details (Without Separate Subject Marks)
         static List<string> GetStudentDetails(List<(int StudentId, string StudentName, Dictionary<string, int> SubjectMarks)> students)
         {
+            try
+            {
+                validateStudentCount(students);
+            } catch(NoRecordsFound e)
+            {
+                Log.Debug("Exception Caught");
+                Console.WriteLine(e);
+            }
             var studentDetails = new List<string>();
 
             foreach (var student in students)
