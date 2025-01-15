@@ -14,13 +14,13 @@ public class NoRecordsFound : Exception
 
 namespace StudentCalculations
 {
-    internal class Program
+    public class Program
     {   
         //Initialize NLog logger
         private static readonly Logger nLogger = LogManager.GetCurrentClassLogger();
 
         // Returns Result, Total Marks and Percentage
-        static (bool IsPass, int TotalMarks, decimal Percentage) CalculateSubjectMarks(Dictionary<string, int> subjectMarks)
+        public static (bool IsPass, int TotalMarks, decimal Percentage) CalculateSubjectMarks(Dictionary<string, int> subjectMarks)
         {
             bool isPass = true;
             int totalMarks = 0;
@@ -38,7 +38,7 @@ namespace StudentCalculations
             return (isPass, totalMarks, percentage);
         }
 
-        static void validateStudentCount(List<(int StudentId, string StudentName, Dictionary<string, int> SubjectMarks)> students)
+        public static void validateStudentCount(List<(int StudentId, string StudentName, Dictionary<string, int> SubjectMarks)> students)
         {
             if(students.Count == 0)
             {
@@ -47,14 +47,14 @@ namespace StudentCalculations
         }
 
         // Returns Tuple containing Student Details (Without Separate Subject Marks)
-        static List<string> GetStudentDetails(List<(int StudentId, string StudentName, Dictionary<string, int> SubjectMarks)> students)
+        public static List<string> GetStudentDetails(List<(int StudentId, string StudentName, Dictionary<string, int> SubjectMarks)> students)
         {
             try
             {
                 validateStudentCount(students);
             } catch(NoRecordsFound e)
             {
-                Log.Debug("Exception Caught");
+                Log.Debug($"{e} Exception Caught");
                 Console.WriteLine(e);
             }
             var studentDetails = new List<string>();
@@ -72,7 +72,7 @@ namespace StudentCalculations
         }
 
         // Returns Student tuple for newly created record
-        static List<(int StudentId, string StudentName, Dictionary<string, int> SubjectMarks)> CreateStudentRecords()
+        public static List<(int StudentId, string StudentName, Dictionary<string, int> SubjectMarks)> CreateStudentRecords()
         {
             var students = new List<(int StudentId, string StudentName, Dictionary<string, int> SubjectMarks)>();
 
@@ -118,7 +118,7 @@ namespace StudentCalculations
         }
 
         // Returns Updated Marks Tuple for Existing Student
-        static (bool IsUpdated, string Message) UpdateStudentMarks(
+        public static (bool IsUpdated, string Message) UpdateStudentMarks(
             List<(int StudentId, string StudentName, Dictionary<string, int> SubjectMarks)> students, int studentId, string subject, int newMarks)
         {
             foreach (var student in students)
@@ -132,7 +132,7 @@ namespace StudentCalculations
             return (false, "Student or subject not found.");
         }
 
-        static void MainMenu()
+        public static void MainMenu()
         {
             // List for All Students Record
             var students = new List<(int StudentId, string StudentName, Dictionary<string, int> SubjectMarks)>();
@@ -202,7 +202,6 @@ namespace StudentCalculations
                         if (updateInput is null)
                         {
                             Log.Warning("Null input for updating marks.");
-                            continue;
                         }
 
                         string[] details = updateInput.Split(' ');
@@ -230,14 +229,15 @@ namespace StudentCalculations
             } while (choice != 5);
         }
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             // Configure Serilog
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
-                .WriteTo.Console()
+                 .Enrich.FromLogContext()
+                //.WriteTo.Console()
                 .WriteTo.File("C:/Users/Kavi/Desktop/Rite/Student_Calculations/logs/application-log-.txt", rollingInterval: RollingInterval.Day)
-                .CreateLogger();
+                 .CreateLogger();
 
             try
             {
